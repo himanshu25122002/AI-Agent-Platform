@@ -1,0 +1,113 @@
+# ============================================================
+# Yuno Agent Platform — Docker Compose
+# Single command startup: docker compose up -d
+# ============================================================
+version: "3.9"
+
+services:
+
+  # ---- PostgreSQL ------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: yuno_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: yuno
+      POSTGRES_PASSWORD: yuno_password
+      POSTGRES_DB: yuno_agents
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yuno -d yuno_agents"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---- Redis -----------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: yuno_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---- FastAPI Backend -------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yuno_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://yuno:yuno_password@postgres:5432/yuno_agents
+      DATABASE_URL_SYNC: postgresql://yuno:yuno_password@postgres:5432/yuno_agents
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ---- RQ Worker (LangGraph Executor) ---------------------------
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yuno_worker
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://yuno:yuno_password@postgres:5432/yuno_agents
+      DATABASE_URL_SYNC: postgresql://yuno:yuno_password@postgres:5432/yuno_agents
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: python -m worker.main
+
+  # ---- Redis Commander (Optional Dev UI) ------------------------
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: yuno_redis_ui
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - debug
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: yuno_network
