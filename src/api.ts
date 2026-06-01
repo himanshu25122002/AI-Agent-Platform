@@ -89,7 +89,7 @@ export const monitoringApi = {
 export const healthApi = {
   check: async () => {
     try {
-      const response = await fetch('http://localhost:8000/health');
+      const response = await fetch(`${BASE_URL.replace('/api', '')}/health`);
       return await response.json();
     } catch {
       return {
