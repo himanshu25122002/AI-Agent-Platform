@@ -27,6 +27,7 @@ python-telegram-bot==21.7
 
 # Pydantic & Config
 pydantic==2.10.3
+pydantic-core==2.27.1
 pydantic-settings==2.6.1
 python-dotenv==1.0.1
 
