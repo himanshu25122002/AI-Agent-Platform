@@ -1,6 +1,3 @@
-<p align="center">
-  <img src="screenshots/banner.png" width="100%">
-</p>
 # 🚀 Yuno Agent Platform
 
 > Build, orchestrate, and deploy AI Teams instead of single AI assistants.
