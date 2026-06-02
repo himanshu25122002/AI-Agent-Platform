@@ -102,7 +102,7 @@ async def telegram_webhook(
 
         if data.startswith("wf:"):
 
-            workflow_id = int(data.replace("wf:", ""))
+            workflow_id = data.replace("wf:", "")
 
             TELEGRAM_USER_WORKFLOWS[chat_id] = workflow_id
 
