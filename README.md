@@ -18,11 +18,11 @@ Unlike traditional chatbots that rely on a single model, Yuno enables multiple s
 
 ### Frontend (Vercel)
 
-🔗 https://YOUR-VERCEL-URL.vercel.app
+🔗 [https://YOUR-VERCEL-URL.vercel.app](https://ai-agent-platform-gv2r.vercel.app/)
 
 ### Backend (Render)
 
-🔗 https://YOUR-RENDER-URL.onrender.com
+🔗 [https://YOUR-RENDER-URL.onrender.com](https://ai-agent-platform-zh4d.onrender.com)
 
 ### Telegram Bot
 
