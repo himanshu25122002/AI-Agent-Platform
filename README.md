@@ -2,7 +2,6 @@
 
 > Build, orchestrate, and deploy AI Teams instead of single AI assistants.
 
-![License](https://img.shields.io/badge/License-MIT-green)
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green)
 ![React](https://img.shields.io/badge/React-Frontend-blue)
@@ -22,7 +21,7 @@ Unlike traditional chatbots that rely on a single model, Yuno enables multiple s
 
 ### Backend (Render)
 
-🔗 [https://YOUR-RENDER-URL.onrender.com](https://ai-agent-platform-zh4d.onrender.com)
+🔗 https://ai-agent-platform-zh4d.onrender.com
 
 ### Telegram Bot
 
