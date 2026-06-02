@@ -248,7 +248,6 @@ CEO Agent
 - Vite
 - Tailwind CSS
 - React Flow
-- Zustand
 
 ## Backend
 
