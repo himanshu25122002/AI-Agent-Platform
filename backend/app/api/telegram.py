@@ -179,17 +179,14 @@ async def telegram_webhook(
     await db.commit()
     await db.refresh(execution)
 
-    # Enqueue job — MUST be last operation before return
-    from app.redis_client import get_job_queue
+    import asyncio
+    from worker.jobs import _execute_workflow_async
 
-    queue = get_job_queue()
-    queue.enqueue(
-        "worker.jobs.execute_workflow",
-        execution_id=execution.id,
-        workflow_data=workflow.to_dict(),
-        kwargs={},
-        job_id=f"exec_{execution.id}",
-        job_timeout=600,
+    asyncio.create_task(
+        _execute_workflow_async(
+            str(execution.id),
+            workflow.to_dict()
+        )
     )
 
     logger.info(
