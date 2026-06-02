@@ -288,7 +288,8 @@ CEO Agent
 
 ## Workflow Builder
 
-![Workflow](screenshots/workflow.png)
+![Workflow_main](screenshots/workflow1.png)
+![Workflow_drag_and_drop](screenshots/workflow2.png)
 
 ---
 
