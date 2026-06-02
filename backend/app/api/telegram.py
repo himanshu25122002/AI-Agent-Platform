@@ -30,7 +30,8 @@ from app.config import settings
 from app.database import get_db
 from app.logger import get_logger
 from app.models import Execution, Workflow
-
+import httpx
+TELEGRAM_USER_WORKFLOWS = {}
 router = APIRouter()
 logger = get_logger(__name__)
 
@@ -90,7 +91,34 @@ async def telegram_webhook(
         logger.error("telegram_webhook_invalid_json")
         return {"ok": True}  # Return 200 to stop Telegram retrying
 
-    # Only handle text messages
+    # Only handle text messages or click
+    callback_query = update.get("callback_query")
+
+    if callback_query:
+
+        chat_id = callback_query["message"]["chat"]["id"]
+
+        data = callback_query.get("data", "")
+
+        if data.startswith("wf:"):
+
+            workflow_id = int(data.replace("wf:", ""))
+
+            TELEGRAM_USER_WORKFLOWS[chat_id] = workflow_id
+
+            result = await db.execute(
+                select(Workflow).where(Workflow.id == workflow_id)
+            )
+
+            selected_wf = result.scalar_one_or_none()
+
+            await send_telegram_message(
+                chat_id,
+                f"✅ Workflow Selected: *{selected_wf.name}*\n\nSend your task now."
+            )
+
+        return {"ok": True}
+
     message = update.get("message") or update.get("edited_message")
     if not message:
         logger.debug("telegram_update_no_message", update_keys=list(update.keys()))
@@ -112,8 +140,9 @@ async def telegram_webhook(
             "I'm connected to a multi-agent AI system.\n"
             "Send me any message and our agents will collaborate to help you.\n\n"
             "Commands:\n"
-            "/status — Check system status\n"
-            "/help — Show this message",
+            "/workflows - Choose workflow to use\n"
+            "/status - Check system status\n"
+            "/help - Show this message",
         )
         return {"ok": True}
 
@@ -137,15 +166,67 @@ async def telegram_webhook(
             "Agents will collaborate and send you a comprehensive response!",
         )
         return {"ok": True}
+    if text.startswith("/workflows"):
 
+        result = await db.execute(
+            select(Workflow)
+            .where(Workflow.is_active == True)
+            .order_by(Workflow.created_at.asc())
+        )
+
+        workflows = result.scalars().all()
+
+        if not workflows:
+            await send_telegram_message(
+                chat_id,
+                "No workflows available."
+            )
+            return {"ok": True}
+
+        keyboard = []
+
+        for wf in workflows:
+            keyboard.append([{
+                "text": wf.name,
+                "callback_data": f"wf:{wf.id}"
+            }])
+
+        payload = {
+            "chat_id": chat_id,
+            "text": "📋 Choose a workflow:",
+            "reply_markup": {
+                "inline_keyboard": keyboard
+            }
+        }
+
+        url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(url, json=payload)
+
+        return {"ok": True}
     # Find default Telegram workflow (Research Team template preferred)
-    result = await db.execute(
-        select(Workflow)
-        .where(Workflow.is_active == True, Workflow.is_template == True)
-        .order_by(Workflow.created_at.asc())
-        .limit(1)
-    )
-    workflow = result.scalar_one_or_none()
+    selected_workflow_id = TELEGRAM_USER_WORKFLOWS.get(chat_id)
+
+    if selected_workflow_id:
+
+        result = await db.execute(
+            select(Workflow)
+            .where(Workflow.id == selected_workflow_id)
+        )
+
+        workflow = result.scalar_one_or_none()
+
+    else:
+
+        result = await db.execute(
+            select(Workflow)
+            .where(Workflow.is_active == True)
+            .order_by(Workflow.created_at.asc())
+            .limit(1)
+        )
+
+        workflow = result.scalar_one_or_none()
 
     if not workflow:
         # Fall back to any active workflow
